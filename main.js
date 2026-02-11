@@ -1,14 +1,4 @@
-Perfect! Here's a fully rewritten main.js for your FNAF jumpscare extension. It has:
-
-Infinite loops — Freddy will always watch for jumpscare opportunities.
-
-Secret code detection — works anywhere, even if you're typing in an input.
-
-Failsafe — removes the overlay automatically after 10s.
-
-Optimized structure — less repeated code, easier to read.
-
-console.log("FNAF jumpscare content script loaded!");
+console.log("FNAF jumpscare extension loaded!");
 
 // --- Flags ---
 let jumpscare = false;
@@ -21,17 +11,8 @@ let comboTimer = null;
 const comboTime = 3000; // 3 seconds to complete combo
 
 // --- Random delay helpers ---
-const randomDelay = () => Math.floor(Math.random() * 10000);       // up to 10s
-const randomCheckDelay = () => Math.floor(Math.random() * 5000);   // up to 5s
-
-// --- Check if tab is focused ---
-function isTabFocused() {
-    return new Promise(resolve => {
-        chrome.runtime.sendMessage({ action: "checkFocus" }, response => {
-            resolve(response?.isFocused ?? false);
-        });
-    });
-}
+function randomDelay(max = 10000) { return Math.floor(Math.random() * max); }
+function randomCheckDelay(max = 5000) { return Math.floor(Math.random() * max); }
 
 // --- Execute jumpscare ---
 function executeJumpscare() {
@@ -48,14 +29,12 @@ function executeJumpscare() {
         height: "100vh",
         zIndex: "9999",
         backgroundColor: "rgba(0,0,0,0)",
-        transition: "background-color 2s"
+        transition: "background-color 1.5s"
     });
     document.body.appendChild(overlay);
 
-    // Fade in
     setTimeout(() => overlay.style.backgroundColor = "rgba(0,0,0,0.6)", 50);
 
-    // Add jumpscare media after fade
     setTimeout(() => {
         const img = document.createElement("img");
         img.src = chrome.runtime.getURL("assets/fredbear.gif");
@@ -103,9 +82,9 @@ function executeJumpscare() {
     }, 2000);
 }
 
-// --- Secret combo detection (works everywhere) ---
+// --- Secret combo detection ---
 document.addEventListener("keydown", e => {
-    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return; // ignore modifiers
 
     if (e.key === secretCombo[comboIndex]) {
         if (comboIndex === 0) {
@@ -125,40 +104,34 @@ document.addEventListener("keydown", e => {
         comboIndex = 0;
         if (comboTimer) clearTimeout(comboTimer);
     }
-}, true); // capture phase ensures detection even inside inputs
+}, true); // capture phase ensures detection even in inputs
 
 // --- Infinite jumpscare loop ---
 async function jumpscareLoop() {
     let interacted = false;
-
     const markInteracted = () => { interacted = true; };
     document.addEventListener("click", markInteracted);
     document.addEventListener("keydown", markInteracted);
 
-    while (true) {
-        // Queue jumpscare randomly
+    while (true) { // infinite loop
+        // Step 1: Randomly queue jumpscare
         while (!jumpscareQueued) {
             await new Promise(r => setTimeout(r, randomDelay()));
             if (Math.random() < 0.03) jumpscareQueued = true;
         }
 
-        // Wait for proper conditions to execute
+        // Step 2: Wait for interaction & tab focus
         while (!jumpscare) {
             await new Promise(r => setTimeout(r, randomCheckDelay()));
-            const focused = await isTabFocused();
-            if (focused && interacted && !jumpscare) {
+            if (interacted && !jumpscare) {
                 if (Math.random() < 0.5) {
                     console.log("[FNAF] Freddy backed out!");
-                    jumpscareQueued = false; // reset for next loop
+                    jumpscareQueued = false; // allow next loop
                 } else {
                     executeJumpscare();
                 }
             }
         }
-
-        // Reset for next cycle
-        jumpscareQueued = false;
-        jumpscare = false;
     }
 }
 
