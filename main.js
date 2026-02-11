@@ -11,7 +11,7 @@ function randomCheckDelay() {
     return Math.floor(Math.random() * 5000);
 }
 
-function isTabFocused() {x
+function isTabFocused() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: "checkFocus" }, (response) => {
             resolve(response?.isFocused ?? false);
