@@ -2,19 +2,15 @@
   "manifest_version": 3,
   "name": "FNAF Jumpscare Extension",
   "version": "1.0",
-  "description": "Random jumpscares and secret combo (1 → 9 → 8 → 7).",
-  "permissions": [
-    "tabs",
-    "scripting",
-    "activeTab"
-  ],
+  "description": "Random Freddy jumpscares with secret combo!",
+  "permissions": ["tabs", "activeTab", "scripting"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["main.js"],
       "run_at": "document_idle"
     }
   ],
@@ -27,10 +23,5 @@
       ],
       "matches": ["<all_urls>"]
     }
-  ],
-  "icons": {
-    "16": "assets/icon16.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
-  }
+  ]
 }
