@@ -1,10 +1,18 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'checkFocus') {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const focusedTabId = tabs[0].id;
-        sendResponse({ isFocused: sender.tab.id === focusedTabId });
-      });
-      // Keep the message channel open until sendResponse is called
-      return true;
+// Keeps track of which tab is focused
+let focusedTabId = null;
+
+chrome.tabs.onActivated.addListener(activeInfo => {
+    focusedTabId = activeInfo.tabId;
+});
+
+chrome.windows.onFocusChanged.addListener(windowId => {
+    if (windowId === chrome.windows.WINDOW_ID_NONE) {
+        focusedTabId = null;
     }
-  });
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "checkFocus") {
+        sendResponse({ isFocused: sender.tab.id === focusedTabId });
+    }
+});
