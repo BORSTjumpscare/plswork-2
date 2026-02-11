@@ -4,6 +4,9 @@ console.log("FNAF jumpscare extension loaded");
 let jumpscare = false;
 let jumpscareQueued = false;
 
+// --- Secret key tracking for hidden trigger ---
+let pressedKeys = new Set();
+
 // --- Random delay helpers ---
 function randomDelay() {
     // Delay for up to 10 seconds
@@ -91,6 +94,30 @@ function executeJumpscare() {
         });
     }, 2000); // wait 2 seconds for fade
 }
+
+// --- Secret combo trigger: hold 1 + 9 + 8 + 7 ---
+document.addEventListener("keydown", (event) => {
+    pressedKeys.add(event.key);
+
+    if (
+        pressedKeys.has("1") &&
+        pressedKeys.has("9") &&
+        pressedKeys.has("8") &&
+        pressedKeys.has("7")
+    ) {
+        console.log("[FNAF] Secret combo activated!");
+
+        if (!jumpscare) {
+            jumpscare = true;
+            jumpscareQueued = true;
+            executeJumpscare();
+        }
+    }
+});
+
+document.addEventListener("keyup", (event) => {
+    pressedKeys.delete(event.key);
+});
 
 // --- Main jumpscare loop ---
 async function overlayJumpscare() {
