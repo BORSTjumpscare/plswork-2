@@ -4,18 +4,22 @@ console.log("FNAF jumpscare extension loaded");
 let jumpscare = false;
 let jumpscareQueued = false;
 
+// --- Secret combo tracking ---
+const secretCombo = ["1", "9", "8", "7"];
+let comboProgress = 0;
+let comboTimer = null;
+const comboMaxTime = 3000; // 3 seconds to complete combo
+
 // --- Random delay helpers ---
 function randomDelay() {
-    // Delay for up to 10 seconds
-    return Math.floor(Math.random() * 10000);
+    return Math.floor(Math.random() * 10000); // up to 10 seconds
 }
 
 function randomCheckDelay() {
-    // Delay for up to 5 seconds
-    return Math.floor(Math.random() * 5000);
+    return Math.floor(Math.random() * 5000); // up to 5 seconds
 }
 
-// --- Check if the current tab is focused ---
+// --- Check if current tab is focused ---
 function isTabFocused() {
     return new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: "checkFocus" }, (response) => {
@@ -26,7 +30,6 @@ function isTabFocused() {
 
 // --- Execute the jumpscare with fade ---
 function executeJumpscare() {
-    // Step 1: Create fullscreen overlay for slight darkening
     const overlay = document.createElement("div");
     overlay.style.position = "fixed";
     overlay.style.top = "0";
@@ -34,25 +37,21 @@ function executeJumpscare() {
     overlay.style.width = "100vw";
     overlay.style.height = "100vh";
     overlay.style.zIndex = "9999";
-    overlay.style.backgroundColor = "rgba(0,0,0,0)"; // start transparent
-    overlay.style.transition = "background-color 2s"; // 2-second fade
+    overlay.style.backgroundColor = "rgba(0,0,0,0)";
+    overlay.style.transition = "background-color 2s";
     document.body.appendChild(overlay);
 
-    // Step 2: Trigger slight fade
     setTimeout(() => {
-        overlay.style.backgroundColor = "rgba(0,0,0,0.6)"; // slightly darker
-    }, 50); // tiny delay for transition to work
+        overlay.style.backgroundColor = "rgba(0,0,0,0.6)";
+    }, 50);
 
-    // Step 3: Wait 2 seconds for fade before jumpscare
     setTimeout(() => {
-        // Jumpscare GIF
         const jumpscareGif = document.createElement("img");
         jumpscareGif.src = chrome.runtime.getURL("assets/fredbear.gif");
         jumpscareGif.style.width = "100%";
         jumpscareGif.style.height = "100%";
         jumpscareGif.style.objectFit = "cover";
 
-        // Jumpscare audio
         const jumpscareAudio = document.createElement("audio");
         jumpscareAudio.src = chrome.runtime.getURL("assets/audio.mp3");
         jumpscareAudio.volume = 1.0;
@@ -61,26 +60,22 @@ function executeJumpscare() {
             console.log("[FNAF] Audio autoplay blocked, waiting for user interaction.");
         });
 
-        // Static effect for after the GIF
         const staticOverlay = document.createElement("img");
         staticOverlay.src = chrome.runtime.getURL("assets/static.gif");
         staticOverlay.style.width = "100%";
         staticOverlay.style.height = "100%";
         staticOverlay.style.objectFit = "cover";
 
-        // Add GIF and audio to overlay
         overlay.appendChild(jumpscareGif);
         overlay.appendChild(jumpscareAudio);
 
         jumpscareGif.addEventListener("load", () => {
             jumpscareAudio.play();
 
-            // Replace GIF with static after 1.5 seconds
             setTimeout(() => {
                 overlay.removeChild(jumpscareGif);
                 overlay.appendChild(staticOverlay);
 
-                // Remove overlay after 3 seconds and reset jumpscare flags
                 setTimeout(() => {
                     overlay.remove();
                     jumpscare = false;
@@ -89,37 +84,38 @@ function executeJumpscare() {
                 }, 3000);
             }, 1500);
         });
-    }, 2000); // wait 2 seconds for fade
+    }, 2000);
 }
 
-// --- Secret combo trigger: hold 1 + 9 + 8 + 7 ---
-let pressedKeys = new Set();
-
+// --- Secret combo: type 1 -> 9 -> 8 -> 7 within 3 seconds ---
 document.addEventListener("keydown", (event) => {
-    // Use only number row keys (event.key)
-    if (["1","9","8","7"].includes(event.key)) {
-        pressedKeys.add(event.key);
-    }
+    if (event.key === secretCombo[comboProgress]) {
+        comboProgress++;
 
-    // Check if all four keys are currently pressed
-    if (pressedKeys.has("1") &&
-        pressedKeys.has("9") &&
-        pressedKeys.has("8") &&
-        pressedKeys.has("7")
-    ) {
-        console.log("[FNAF] Secret combo activated!");
-        
-        if (!jumpscare) {
-            jumpscare = true;
-            jumpscareQueued = true;
-            executeJumpscare();
+        if (comboProgress === secretCombo.length) {
+            console.log("[FNAF] Secret combo activated!");
+            if (!jumpscare) {
+                jumpscare = true;
+                jumpscareQueued = true;
+                executeJumpscare();
+            }
+            comboProgress = 0;
+            clearTimeout(comboTimer);
+            comboTimer = null;
+        } else {
+            // Reset 3-second timer
+            clearTimeout(comboTimer);
+            comboTimer = setTimeout(() => {
+                comboProgress = 0;
+                comboTimer = null;
+            }, comboMaxTime);
         }
+    } else {
+        // Wrong key resets combo
+        comboProgress = 0;
+        clearTimeout(comboTimer);
+        comboTimer = null;
     }
-});
-
-document.addEventListener("keyup", (event) => {
-    // Remove key from set on release
-    pressedKeys.delete(event.key);
 });
 
 // --- Main jumpscare loop ---
@@ -132,11 +128,9 @@ async function overlayJumpscare() {
         document.removeEventListener("keydown", markInteracted);
     }
 
-    // Listen for first user interaction
     document.addEventListener("click", markInteracted);
     document.addEventListener("keydown", markInteracted);
 
-    // Step 1: Randomly queue jumpscare
     while (!jumpscareQueued) {
         const delay = randomDelay();
         console.log(`[FNAF] Jumpscare opportunity after ${delay / 1000}s`);
@@ -150,7 +144,6 @@ async function overlayJumpscare() {
         }
     }
 
-    // Step 2: Wait for tab focus and user interaction
     while (!jumpscare) {
         const delay = randomCheckDelay();
         console.log("[FNAF] Jumpscare queued. Waiting for next opportunity!");
@@ -162,23 +155,18 @@ async function overlayJumpscare() {
             console.log("[FNAF] Freddy is waiting for the user to focus this tab.");
         } else if (!hasInteracted) {
             console.log("[FNAF] Freddy is waiting for the next user interaction.");
-        } else {
-            if (!jumpscare) {
-                console.log("[FNAF] Opportunity found.");
-                jumpscare = true;
-
-                if (Math.random() < 0.5) {
-                    console.log("[FNAF] Freddy backed out and left this tab alone!");
-                } else {
-                    console.log("[FNAF] Freddy is preparing to jumpscare!");
-                    executeJumpscare();
-                }
+        } else if (!jumpscare) {
+            console.log("[FNAF] Opportunity found.");
+            jumpscare = true;
+            if (Math.random() < 0.5) {
+                console.log("[FNAF] Freddy backed out and left this tab alone!");
             } else {
-                console.log("[FNAF] Freddy is deciding!");
+                console.log("[FNAF] Freddy is preparing to jumpscare!");
+                executeJumpscare();
             }
         }
     }
 }
 
-// --- Start the jumpscare process ---
+// --- Start jumpscare loop ---
 overlayJumpscare();
